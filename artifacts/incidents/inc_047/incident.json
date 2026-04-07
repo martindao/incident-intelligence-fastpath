@@ -1,0 +1,28 @@
+{
+  "id": "inc_047",
+  "status": "open",
+  "severity": "P2",
+  "title": "Database connection exhaustion affecting database, api",
+  "opened_at": "2026-04-06T10:24:04.190Z",
+  "promoted_from_event_bucket": "system_incident",
+  "primary_service": "database",
+  "affected_components": [
+    "database",
+    "api"
+  ],
+  "probable_origin": {
+    "service": "database",
+    "confidence": 0.8,
+    "reason": "earliest repeated failure in correlation window (3 events)"
+  },
+  "timeline_ref": "artifacts/incidents/inc_047/timeline.json",
+  "evidence_ref": "artifacts/incidents/inc_047/evidence-bundle.json",
+  "summary_ref": "artifacts/incidents/inc_047/summary.md",
+  "runbook_ref": "runbooks/db-exhaustion.md",
+  "correlated_events": [
+    "evt_db_err_0",
+    "evt_db_err_1",
+    "evt_db_err_2",
+    "evt_api_db_err"
+  ]
+}

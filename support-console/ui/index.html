@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Intelligence Console</title>
+  <style>
+    :root {
+      --bg-primary: #09090b; --bg-secondary: #111114; --bg-tertiary: #18181b;
+      --bg-hover: #1e1e22; --border-subtle: #27272a; --border-medium: #3f3f46;
+      --text-primary: #fafafa; --text-secondary: #a1a1aa; --text-muted: #71717a;
+      --accent-blue: #3b82f6; --accent-cyan: #06b6d4; --accent-purple: #8b5cf6;
+      --severity-p1: #dc2626; --severity-p1-bg: rgba(220,38,38,0.12);
+      --severity-p2: #ea580c; --severity-p2-bg: rgba(234,88,12,0.12);
+      --severity-p3: #ca8a04; --severity-p3-bg: rgba(202,138,4,0.12);
+      --status-open: #22c55e; --status-open-bg: rgba(34,197,94,0.12);
+      --health-operational: #22c55e; --health-degraded: #f59e0b;
+      --health-down: #ef4444; --health-unknown: #71717a;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem;
+      --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; font-size: 0.875rem; line-height: 1.5; }
+    .app-header { background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle); padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .app-header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .app-logo { width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff; }
+    .app-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+    .app-subtitle { font-size: 0.75rem; color: var(--text-muted); }
+    .app-header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-badge { font-size: 0.6875rem; padding: 0.25rem 0.625rem; border-radius: 9999px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-weight: 500; }
+    .app-layout { display: grid; grid-template-columns: 340px 1fr 300px; height: calc(100vh - 53px); }
+    .incident-queue { background: var(--bg-secondary); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; overflow: hidden; }
+    .queue-header { padding: 1rem 1rem 0.75rem; border-bottom: 1px solid var(--border-subtle); }
+    .queue-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .queue-count { font-size: 0.6875rem; color: var(--text-muted); }
+    .queue-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .queue-list::-webkit-scrollbar { width: 6px; } .queue-list::-webkit-scrollbar-track { background: transparent; } .queue-list::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+    .incident-card { background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.875rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s ease; animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .incident-card:hover { border-color: var(--border-medium); background: var(--bg-hover); }
+    .incident-card.active { border-color: var(--accent-blue); background: rgba(59,130,246,0.06); }
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
+    .card-id { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); }
+    .card-severity { font-size: 0.625rem; font-weight: 700; padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+    .card-severity.p1 { background: var(--severity-p1-bg); color: var(--severity-p1); }
+    .card-severity.p2 { background: var(--severity-p2-bg); color: var(--severity-p2); }
+    .card-severity.p3 { background: var(--severity-p3-bg); color: var(--severity-p3); }
+    .card-title { font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.6875rem; color: var(--text-muted); }
+    .card-meta-item { display: flex; align-items: center; gap: 0.25rem; }
+    .card-meta-icon { width: 12px; height: 12px; opacity: 0.6; }
+    .card-trust-markers { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
+    .trust-chip { font-size: 0.625rem; padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); background: var(--bg-primary); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-weight: 500; }
+    .incident-detail { overflow-y: auto; padding: 1.5rem; }
+    .incident-detail::-webkit-scrollbar { width: 6px; } .incident-detail::-webkit-scrollbar-track { background: transparent; } .incident-detail::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+    .detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-muted); }
+    .detail-empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+    .detail-empty-title { font-size: 1rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; }
+    .detail-empty-desc { font-size: 0.8125rem; max-width: 320px; }
+    .detail-header { margin-bottom: 1.5rem; }
+    .detail-header-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
+    .detail-id { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .detail-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+    .detail-badges { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .detail-badge { font-size: 0.6875rem; font-weight: 600; padding: 0.25rem 0.625rem; border-radius: var(--radius-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+    .detail-badge.p1 { background: var(--severity-p1-bg); color: var(--severity-p1); }
+    .detail-badge.p2 { background: var(--severity-p2-bg); color: var(--severity-p2); }
+    .detail-badge.p3 { background: var(--severity-p3-bg); color: var(--severity-p3); }
+    .detail-badge.open { background: var(--status-open-bg); color: var(--status-open); }
+    .detail-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+    .meta-block { background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; }
+    .meta-block-label { font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .meta-block-value { font-size: 0.8125rem; color: var(--text-primary); font-weight: 500; }
+    .meta-block-value.mono { font-family: var(--font-mono); font-size: 0.75rem; }
+    .detail-section { margin-bottom: 1.5rem; }
+    .section-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .section-icon { width: 16px; height: 16px; color: var(--text-muted); }
+    .section-title { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+    .section-content { background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; }
+    .overview-text { font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.6; }
+    .next-actions { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+    .next-actions-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .next-action-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.375rem; }
+    .next-action-num { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-primary); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; font-size: 0.625rem; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+    .timeline-list { position: relative; }
+    .timeline-item { display: flex; gap: 0.75rem; padding: 0.5rem 0; position: relative; }
+    .timeline-item:not(:last-child)::before { content: ''; position: absolute; left: 7px; top: 24px; bottom: -4px; width: 1px; background: var(--border-subtle); }
+    .timeline-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-medium); background: var(--bg-primary); flex-shrink: 0; margin-top: 2px; }
+    .timeline-dot.event { border-color: var(--text-muted); }
+    .timeline-dot.promotion { border-color: var(--accent-blue); background: var(--accent-blue); }
+    .timeline-dot.evidence { border-color: var(--accent-purple); background: var(--accent-purple); }
+    .timeline-dot.runbook { border-color: var(--accent-cyan); background: var(--accent-cyan); }
+    .timeline-content { flex: 1; }
+    .timeline-time { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 0.125rem; }
+    .timeline-message { font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.4; }
+    .timeline-service { font-size: 0.625rem; font-weight: 600; padding: 0.0625rem 0.375rem; border-radius: var(--radius-sm); background: var(--bg-primary); border: 1px solid var(--border-subtle); color: var(--text-muted); margin-right: 0.375rem; }
+    .evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
+    .evidence-metric { background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; text-align: center; }
+    .evidence-metric-value { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono); }
+    .evidence-metric-label { font-size: 0.625rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+    .evidence-logs { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+    .evidence-logs-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .log-entry { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-secondary); padding: 0.25rem 0; border-bottom: 1px solid rgba(39,39,42,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-severity { font-weight: 700; margin-right: 0.375rem; }
+    .log-severity.error { color: var(--severity-p1); } .log-severity.warning { color: var(--severity-p3); } .log-severity.info { color: var(--accent-blue); }
+    .md-content { font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.6; }
+    .md-content h1, .md-content h2, .md-content h3 { color: var(--text-primary); margin: 1rem 0 0.5rem; font-size: 0.875rem; }
+    .md-content h1:first-child, .md-content h2:first-child, .md-content h3:first-child { margin-top: 0; }
+    .md-content p { margin-bottom: 0.5rem; } .md-content ul { padding-left: 1.25rem; margin-bottom: 0.5rem; } .md-content li { margin-bottom: 0.25rem; }
+    .md-content code { font-family: var(--font-mono); font-size: 0.75rem; background: var(--bg-primary); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); }
+    .md-content pre { background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+    .md-content pre code { background: none; padding: 0; }
+    .md-content table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+    .md-content th, .md-content td { border: 1px solid var(--border-subtle); padding: 0.375rem 0.5rem; text-align: left; font-size: 0.75rem; }
+    .md-content th { background: var(--bg-primary); font-weight: 600; color: var(--text-primary); }
+    .artifact-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .artifact-link { font-size: 0.6875rem; padding: 0.375rem 0.75rem; border-radius: var(--radius-sm); background: var(--bg-primary); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: all 0.15s ease; }
+    .artifact-link:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .context-panel { background: var(--bg-secondary); border-left: 1px solid var(--border-subtle); display: flex; flex-direction: column; overflow-y: auto; }
+    .context-panel::-webkit-scrollbar { width: 6px; } .context-panel::-webkit-scrollbar-track { background: transparent; } .context-panel::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+    .context-section { padding: 1rem; border-bottom: 1px solid var(--border-subtle); }
+    .context-title { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .health-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .health-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.625rem; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+    .health-row.implicated { border-color: var(--severity-p2); background: var(--severity-p2-bg); }
+    .health-row-left { display: flex; align-items: center; gap: 0.5rem; }
+    .health-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .health-dot.operational { background: var(--health-operational); } .health-dot.degraded { background: var(--health-degraded); } .health-dot.down { background: var(--health-down); } .health-dot.unknown { background: var(--health-unknown); }
+    .health-name { font-size: 0.75rem; font-weight: 500; color: var(--text-primary); }
+    .health-status-text { font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .health-status-text.operational { color: var(--health-operational); } .health-status-text.degraded { color: var(--health-degraded); } .health-status-text.down { color: var(--health-down); } .health-status-text.unknown { color: var(--health-unknown); }
+    .trust-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .trust-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary); }
+    .trust-icon { width: 14px; height: 14px; color: var(--accent-cyan); flex-shrink: 0; margin-top: 1px; }
+    .trust-label { color: var(--text-muted); } .trust-value { color: var(--text-primary); font-weight: 500; }
+    .sim-controls { display: flex; flex-direction: column; gap: 0.5rem; }
+    .sim-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0.625rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+    .sim-btn:hover { border-color: var(--accent-blue); background: var(--bg-hover); }
+    .sim-btn:active { transform: scale(0.98); }
+    .sim-btn.loading { opacity: 0.7; cursor: wait; }
+    .sim-btn-icon { width: 16px; height: 16px; margin-right: 0.5rem; }
+    .sim-btn-text { flex: 1; text-align: left; }
+    .sim-btn-badge { font-size: 0.625rem; padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); background: var(--bg-primary); border: 1px solid var(--border-subtle); color: var(--text-muted); }
+    .reset-btn { margin-top: 0.5rem; padding: 0.5rem; background: transparent; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); color: var(--text-muted); font-size: 0.6875rem; cursor: pointer; transition: all 0.2s ease; }
+    .reset-btn:hover { border-color: var(--severity-p1); color: var(--severity-p1); }
+    @media (max-width: 1200px) { .app-layout { grid-template-columns: 300px 1fr 240px; } }
+    @media (max-width: 900px) { .app-layout { grid-template-columns: 1fr; height: auto; } .incident-queue { border-right: none; border-bottom: 1px solid var(--border-subtle); max-height: 400px; } .context-panel { border-left: none; border-top: 1px solid var(--border-subtle); } }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <div class="app-logo">IC</div>
+      <div><div class="app-title">Incident Intelligence Console</div><div class="app-subtitle">Application Support — Fast-Path Diagnosis</div></div>
+    </div>
+    <div class="app-header-right">
+      <span class="header-badge" id="incident-count-badge">0 incidents</span>
+      <span class="header-badge" id="health-status-badge">Health: —</span>
+    </div>
+  </header>
+  <div class="app-layout">
+    <aside class="incident-queue">
+      <div class="queue-header"><div class="queue-title">Incident Queue</div><div class="queue-count" id="queue-count">Loading...</div></div>
+      <div class="queue-list" id="incident-list">
+        <div class="detail-empty"><div class="detail-empty-icon">📋</div><div class="detail-empty-title">No incidents yet</div><div class="detail-empty-desc">Use the <strong>Simulate</strong> buttons to generate incidents.</div></div>
+      </div>
+    </aside>
+    <main class="incident-detail" id="incident-detail">
+      <div class="detail-empty"><div class="detail-empty-icon">🔍</div><div class="detail-empty-title">Select an incident</div><div class="detail-empty-desc">Choose an incident from the queue to view its timeline, evidence, summary, and linked runbook.</div></div>
+    </main>
+    <aside class="context-panel">
+      <div class="context-section">
+        <div class="context-title">Live Simulation</div>
+        <div class="sim-controls">
+          <button class="sim-btn" id="sim-poison-pill" onclick="simulate('poison-pill')"><svg class="sim-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span class="sim-btn-text">Poison Pill</span><span class="sim-btn-badge">P1</span></button>
+          <button class="sim-btn" id="sim-queue-backlog" onclick="simulate('queue-backlog')"><svg class="sim-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span class="sim-btn-text">Queue Backlog</span><span class="sim-btn-badge">P3</span></button>
+          <button class="sim-btn" id="sim-db-exhaustion" onclick="simulate('db-exhaustion')"><svg class="sim-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span class="sim-btn-text">DB Exhaustion</span><span class="sim-btn-badge">P2</span></button>
+          <button class="reset-btn" id="sim-reset" onclick="resetConsole()">Reset Console</button>
+        </div>
+      </div>
+      <div class="context-section">
+        <div class="context-title">Component Health</div>
+        <div class="health-list" id="health-list">
+          <div class="health-row"><div class="health-row-left"><span class="health-dot unknown"></span><span class="health-name">API</span></div><span class="health-status-text unknown">Unknown</span></div>
+          <div class="health-row"><div class="health-row-left"><span class="health-dot unknown"></span><span class="health-name">Worker</span></div><span class="health-status-text unknown">Unknown</span></div>
+          <div class="health-row"><div class="health-row-left"><span class="health-dot unknown"></span><span class="health-name">Queue</span></div><span class="health-status-text unknown">Unknown</span></div>
+          <div class="health-row"><div class="health-row-left"><span class="health-dot unknown"></span><span class="health-name">Database</span></div><span class="health-status-text unknown">Unknown</span></div>
+        </div>
+      </div>
+      <div class="context-section" id="trust-section" style="display:none;"><div class="context-title">Incident Context</div><div class="trust-list" id="trust-list"></div></div>
+    </aside>
+  </div>
+  <script>
+    let incidents = [];
+    let selectedIncidentId = null;
+    let healthData = {};
+
+    async function simulate(type) {
+      const btn = document.getElementById('sim-' + type);
+      if (!btn || btn.disabled) return;
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        const res = await fetch('/api/simulate/' + type, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) { await loadIncidents(); await loadHealth(); if (incidents.length > 0 && !selectedIncidentId) selectIncident(incidents[0].id); }
+      } catch (e) { console.error(e); }
+      btn.classList.remove('loading'); btn.disabled = false;
+    }
+
+    async function resetConsole() {
+      if (!confirm('Clear all incidents and reset state?')) return;
+      const btn = document.getElementById('sim-reset');
+      btn.disabled = true;
+      try {
+        await fetch('/api/reset', { method: 'POST' });
+        selectedIncidentId = null;
+        document.getElementById('incident-detail').innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">🔍</div><div class="detail-empty-title">Select an incident</div><div class="detail-empty-desc">Choose an incident from the queue to view its timeline, evidence, summary, and linked runbook.</div></div>';
+        document.getElementById('trust-section').style.display = 'none';
+        await loadIncidents(); await loadHealth();
+      } catch (e) { console.error(e); }
+      btn.disabled = false;
+    }
+
+    async function loadIncidents() {
+      try {
+        const res = await fetch('/api/incidents');
+        incidents = await res.json();
+        renderIncidentList();
+        document.getElementById('incident-count-badge').textContent = incidents.length + ' incident' + (incidents.length !== 1 ? 's' : '');
+        document.getElementById('queue-count').textContent = incidents.length + ' incident' + (incidents.length !== 1 ? 's' : '') + ' in queue';
+        if (selectedIncidentId) { const inc = incidents.find(i => i.id === selectedIncidentId); if (inc) renderIncidentDetail(inc); }
+      } catch (e) { console.error('Failed to load incidents:', e); }
+    }
+
+    async function loadHealth() {
+      try {
+        const res = await fetch('/api/health');
+        healthData = await res.json();
+        renderHealth();
+        const degraded = Object.entries(healthData).filter(function(e) { return e[1] !== 'operational'; }).length;
+        const badge = document.getElementById('health-status-badge');
+        if (degraded === 0) { badge.textContent = 'Health: All Operational'; badge.style.color = 'var(--health-operational)'; }
+        else { badge.textContent = 'Health: ' + degraded + ' degraded'; badge.style.color = 'var(--health-degraded)'; }
+      } catch (e) { console.error('Failed to load health:', e); }
+    }
+
+    function renderIncidentList() {
+      var container = document.getElementById('incident-list');
+      if (incidents.length === 0) { container.innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">📋</div><div class="detail-empty-title">No incidents yet</div><div class="detail-empty-desc">Use the <strong>Simulate</strong> buttons to generate incidents.</div></div>'; return; }
+      container.innerHTML = incidents.map(function(inc) {
+        var isActive = inc.id === selectedIncidentId;
+        var eventCount = inc.correlated_events ? inc.correlated_events.length : 0;
+        var affectedCount = inc.affected_components ? inc.affected_components.length : 0;
+        var confidence = inc.probable_origin ? Math.round(inc.probable_origin.confidence * 100) : 0;
+        var runbookName = inc.runbook_ref ? inc.runbook_ref.split('/').pop().replace('.md', '') : 'triage';
+        return '<div class="incident-card ' + (isActive ? 'active' : '') + '" onclick="selectIncident(\'' + inc.id + '\')">' +
+          '<div class="card-header"><span class="card-id">' + inc.id + '</span><span class="card-severity ' + inc.severity.toLowerCase() + '">' + inc.severity + '</span></div>' +
+          '<div class="card-title">' + inc.title + '</div>' +
+          '<div class="card-meta"><span class="card-meta-item">' + new Date(inc.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</span><span class="card-meta-item">' + (inc.probable_origin ? inc.probable_origin.service : 'unknown') + '</span><span class="card-meta-item">' + confidence + '% confidence</span></div>' +
+          '<div class="card-trust-markers"><span class="trust-chip">' + eventCount + ' event' + (eventCount !== 1 ? 's' : '') + '</span><span class="trust-chip">' + affectedCount + ' component' + (affectedCount !== 1 ? 's' : '') + '</span><span class="trust-chip">' + runbookName + '</span></div></div>';
+      }).join('');
+    }
+
+    function selectIncident(id) {
+      selectedIncidentId = id;
+      var inc = incidents.find(function(i) { return i.id === id; });
+      if (inc) { renderIncidentDetail(inc); renderIncidentList(); renderTrustPanel(inc); }
+    }
+
+    async function renderIncidentDetail(inc) {
+      var container = document.getElementById('incident-detail');
+      var results = await Promise.allSettled([
+        fetch('/api/incidents/' + inc.id + '/timeline.json').then(function(r) { return r.ok ? r.json() : null; }),
+        fetch('/api/incidents/' + inc.id + '/evidence-bundle.json').then(function(r) { return r.ok ? r.json() : null; }),
+        fetch('/api/incidents/' + inc.id + '/summary.md').then(function(r) { return r.ok ? r.text() : null; }),
+        fetch('/runbooks/' + (inc.runbook_ref ? inc.runbook_ref.split('/').pop() : 'general-triage.md')).then(function(r) { return r.ok ? r.text() : null; })
+      ]);
+      var timeline = results[0].status === 'fulfilled' ? results[0].value : null;
+      var evidence = results[1].status === 'fulfilled' ? results[1].value : null;
+      var summary = results[2].status === 'fulfilled' ? results[2].value : null;
+      var runbook = results[3].status === 'fulfilled' ? results[3].value : null;
+      var eventCount = inc.correlated_events ? inc.correlated_events.length : 0;
+      var affectedCount = inc.affected_components ? inc.affected_components.length : 0;
+      var confidence = inc.probable_origin ? Math.round(inc.probable_origin.confidence * 100) : 0;
+      var overviewText = '', nextActions = [];
+      if (summary) {
+        var wm = summary.match(/## What Happened\n\n([\s\S]*?)(?=##|$)/);
+        if (wm) overviewText = wm[1].trim();
+        var nm = summary.match(/## Recommended Next Actions\n\n([\s\S]*?)(?=##|$)/);
+        if (nm) nextActions = nm[1].trim().split('\n').filter(function(l) { return l.match(/^\d+\./); }).map(function(l) { return l.replace(/^\d+\.\s*/, ''); });
+      }
+      var runbookPreview = '';
+      if (runbook) { var sections = runbook.split('## ').slice(0, 4); runbookPreview = sections.join('## '); }
+      var html = '<div class="detail-header"><div class="detail-header-top"><div><div class="detail-id">' + inc.id + '</div><div class="detail-title">' + inc.title + '</div></div><div class="detail-badges"><span class="detail-badge ' + inc.severity.toLowerCase() + '">' + inc.severity + '</span><span class="detail-badge ' + inc.status.toLowerCase() + '">' + inc.status + '</span></div></div>';
+      html += '<div class="detail-meta-grid"><div class="meta-block"><div class="meta-block-label">Probable Origin</div><div class="meta-block-value">' + (inc.probable_origin ? inc.probable_origin.service : 'unknown') + ' (' + confidence + '%)</div></div>';
+      html += '<div class="meta-block"><div class="meta-block-label">Affected Components</div><div class="meta-block-value">' + (inc.affected_components ? inc.affected_components.join(', ') : 'none') + '</div></div>';
+      html += '<div class="meta-block"><div class="meta-block-label">Correlated Events</div><div class="meta-block-value mono">' + eventCount + ' events</div></div>';
+      html += '<div class="meta-block"><div class="meta-block-label">Opened At</div><div class="meta-block-value mono">' + new Date(inc.opened_at).toLocaleString() + '</div></div></div></div>';
+      if (overviewText) {
+        html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span class="section-title">Overview</span></div><div class="section-content"><div class="overview-text">' + overviewText.replace(/\n/g, '<br>') + '</div>';
+        if (nextActions.length > 0) { html += '<div class="next-actions"><div class="next-actions-title">Recommended Next Actions</div>'; nextActions.forEach(function(a, i) { html += '<div class="next-action-item"><span class="next-action-num">' + (i+1) + '</span><span>' + a + '</span></div>'; }); html += '</div>'; }
+        html += '</div></div>';
+      }
+      if (timeline && timeline.length > 0) {
+        html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg><span class="section-title">Timeline</span></div><div class="section-content"><div class="timeline-list">';
+        timeline.forEach(function(entry) {
+          var dotClass = 'event';
+          if (entry.type === 'promotion') dotClass = 'promotion';
+          else if (entry.type === 'evidence_captured') dotClass = 'evidence';
+          else if (entry.type === 'runbook_recommended') dotClass = 'runbook';
+          html += '<div class="timeline-item"><div class="timeline-dot ' + dotClass + '"></div><div class="timeline-content"><div class="timeline-time">' + new Date(entry.timestamp).toLocaleTimeString() + '</div><div class="timeline-message"><span class="timeline-service">' + entry.service + '</span>' + entry.message + '</div></div></div>';
+        });
+        html += '</div></div></div>';
+      }
+      if (evidence) {
+        html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><span class="section-title">Evidence Snapshot</span></div><div class="section-content"><div class="evidence-grid">';
+        html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.queue_depth !== undefined ? evidence.queue_depth : '—') + '</div><div class="evidence-metric-label">Queue Depth</div></div>';
+        html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.db_status ? evidence.db_status.active_connections + '/' + evidence.db_status.max_connections : '—') + '</div><div class="evidence-metric-label">DB Connections</div></div>';
+        html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.failed_jobs_count !== undefined ? evidence.failed_jobs_count : '—') + '</div><div class="evidence-metric-label">Failed Jobs</div></div>';
+        html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.processed_jobs_count !== undefined ? evidence.processed_jobs_count : '—') + '</div><div class="evidence-metric-label">Processed Jobs</div></div></div>';
+        if (evidence.recent_logs && evidence.recent_logs.length > 0) {
+          html += '<div class="evidence-logs"><div class="evidence-logs-title">Recent Logs</div>';
+          evidence.recent_logs.slice(-8).forEach(function(log) { html += '<div class="log-entry"><span class="log-severity ' + log.severity + '">[' + log.severity.toUpperCase() + ']</span>' + log.service + ': ' + log.message + '</div>'; });
+          html += '</div>';
+        }
+        if (evidence.checksum) html += '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle);font-size:0.625rem;color:var(--text-muted);font-family:var(--font-mono);">Evidence captured: ' + (evidence.captured_at ? new Date(evidence.captured_at).toLocaleString() : '—') + ' · Checksum: ' + evidence.checksum + '</div>';
+        html += '</div></div>';
+      }
+      if (runbookPreview) {
+        html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="section-title">Runbook Preview</span></div><div class="section-content"><div class="md-content">' + renderMarkdown(runbookPreview) + '</div></div></div>';
+      }
+      html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="section-title">Raw Artifacts</span></div><div class="section-content"><div class="artifact-links">';
+      html += '<a href="/api/incidents/' + inc.id + '/incident.json" target="_blank" class="artifact-link">incident.json</a>';
+      html += '<a href="/api/incidents/' + inc.id + '/timeline.json" target="_blank" class="artifact-link">timeline.json</a>';
+      html += '<a href="/api/incidents/' + inc.id + '/evidence-bundle.json" target="_blank" class="artifact-link">evidence-bundle.json</a>';
+      html += '<a href="/api/incidents/' + inc.id + '/summary.md" target="_blank" class="artifact-link">summary.md</a>';
+      html += '<a href="/runbooks/' + (inc.runbook_ref ? inc.runbook_ref.split('/').pop() : 'general-triage.md') + '" target="_blank" class="artifact-link">runbook</a>';
+      html += '</div></div></div>';
+      container.innerHTML = html;
+    }
+
+    function renderHealth() {
+      var container = document.getElementById('health-list');
+      var labels = { api: 'API', 'job-worker': 'Worker', queue: 'Queue', database: 'Database' };
+      var implicated = selectedIncidentId ? (incidents.find(function(i) { return i.id === selectedIncidentId; }) || {}).affected_components || [] : [];
+      container.innerHTML = Object.entries(healthData).map(function(entry) {
+        var key = entry[0], status = entry[1];
+        var isImplicated = implicated.indexOf(key) !== -1;
+        return '<div class="health-row ' + (isImplicated ? 'implicated' : '') + '"><div class="health-row-left"><span class="health-dot ' + status + '"></span><span class="health-name">' + (labels[key] || key) + '</span></div><span class="health-status-text ' + status + '">' + status + '</span></div>';
+      }).join('');
+    }
+
+    function renderTrustPanel(inc) {
+      var section = document.getElementById('trust-section');
+      var list = document.getElementById('trust-list');
+      section.style.display = 'block';
+      var eventCount = inc.correlated_events ? inc.correlated_events.length : 0;
+      var affectedCount = inc.affected_components ? inc.affected_components.length : 0;
+      var confidence = inc.probable_origin ? Math.round(inc.probable_origin.confidence * 100) : 0;
+      var runbookName = inc.runbook_ref ? inc.runbook_ref.split('/').pop() : 'general-triage.md';
+      list.innerHTML = '<div class="trust-item"><svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><div><span class="trust-label">Origin confidence:</span> <span class="trust-value">' + confidence + '%</span></div></div>' +
+        '<div class="trust-item"><svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><div><span class="trust-label">Correlated events:</span> <span class="trust-value">' + eventCount + '</span></div></div>' +
+        '<div class="trust-item"><svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><div><span class="trust-label">Affected components:</span> <span class="trust-value">' + affectedCount + '</span></div></div>' +
+        '<div class="trust-item"><svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><div><span class="trust-label">Runbook matched:</span> <span class="trust-value">' + runbookName + '</span></div></div>' +
+        '<div class="trust-item"><svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><div><span class="trust-label">Evidence:</span> <span class="trust-value">Captured</span></div></div>';
+    }
+
+    function renderMarkdown(md) {
+      return md.replace(/^### (.+)$/gm, '<h3>$1</h3>').replace(/^## (.+)$/gm, '<h2>$1</h2>').replace(/^# (.+)$/gm, '<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/`(.+?)`/g, '<code>$1</code>').replace(/^- (.+)$/gm, '<li>$1</li>').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+    }
+
+    loadIncidents();
+    loadHealth();
+    setInterval(loadIncidents, 3000);
+    setInterval(loadHealth, 3000);
+  </script>
+</body>
+</html>

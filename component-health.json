@@ -1,0 +1,6 @@
+{
+  "api": "operational",
+  "job-worker": "operational",
+  "queue": "operational",
+  "database": "degraded"
+}

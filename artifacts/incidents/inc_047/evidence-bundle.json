@@ -1,0 +1,52 @@
+{
+  "incident_id": "inc_047",
+  "captured_at": "2026-04-06T10:24:04.190Z",
+  "checksum": "sha256:56d2d5ebc7b573f5",
+  "scenario_id": "db-exhaustion",
+  "component_health": {
+    "api": "operational",
+    "job-worker": "operational",
+    "queue": "operational",
+    "database": "degraded"
+  },
+  "queue_depth": 0,
+  "recent_logs": [
+    {
+      "timestamp": "2026-04-06T10:24:03.982Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (85/100)"
+    },
+    {
+      "timestamp": "2026-04-06T10:24:04.983Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (86/100)"
+    },
+    {
+      "timestamp": "2026-04-06T10:24:05.983Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (87/100)"
+    },
+    {
+      "timestamp": "2026-04-06T10:24:06.983Z",
+      "service": "api",
+      "severity": "error",
+      "message": "API write failed: connection timeout"
+    }
+  ],
+  "db_status": {
+    "active_connections": 85,
+    "max_connections": 100,
+    "recent_errors": 0
+  },
+  "triggering_events": [
+    "evt_db_err_0",
+    "evt_db_err_1",
+    "evt_db_err_2",
+    "evt_api_db_err"
+  ],
+  "failed_jobs_count": 0,
+  "processed_jobs_count": 0
+}
