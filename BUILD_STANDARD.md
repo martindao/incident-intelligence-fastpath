@@ -11,7 +11,7 @@ This document is the shared quality bar for repos 02–06. Any AI building a rep
 
 ## Golden Reference
 
-Use `incident-intelligence-fastpath` as the runtime and operator-console template.
+Use `SUP_incident-intelligence-fastpath` as the runtime and operator-console template.
 
 ## Mandatory Quality Rules
 
