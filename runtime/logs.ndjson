@@ -1,0 +1,2 @@
+{"id":"evt_test_log","timestamp":"2026-04-11T04:11:48.722Z","service":"test","severity":"info","message":"test"}
+{"id":"evt_1775880709591_c9oktl","timestamp":"2026-04-11T04:11:49.591Z","source":"worker","service":"job-worker","severity":"info","type":"job_completed","correlation_key":"test_job_1","message":"Job test_job_1 completed successfully","metadata":{"job_id":"test_job_1"},"raw":{}}

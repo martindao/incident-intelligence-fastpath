@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const RUNTIME_DIR = path.join(__dirname, '..');
+const RUNTIME_DIR = __dirname;
 const QUEUE_FILE = path.join(RUNTIME_DIR, 'queue.json');
 const PROCESSED_FILE = path.join(RUNTIME_DIR, 'processed-jobs.json');
 const FAILED_FILE = path.join(RUNTIME_DIR, 'failed-jobs.json');

@@ -11,7 +11,7 @@
     "scenario:poison-pill": "node scenarios/poison-pill-job/inject.js",
     "scenario:queue-backlog": "node scenarios/queue-backlog/inject.js",
     "scenario:db-exhaustion": "node scenarios/db-connection-exhaustion/inject.js",
-    "reset": "node -e \"require('./runtime/store').resetRuntime(); console.log('Runtime state cleared.')\"",
+    "reset": "node scripts/reset.js",
     "test": "node tests/run-tests.js",
     "test:integration": "node tests/integration.js"
   },
