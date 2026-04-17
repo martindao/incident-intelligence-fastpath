@@ -18,7 +18,15 @@
   "dependencies": {
     "concurrently": "^8.2.2"
   },
-  "keywords": ["incident-management", "application-support", "support-engineering", "incident-intelligence"],
+  "keywords": [
+    "incident-management",
+    "application-support",
+    "support-engineering",
+    "incident-intelligence"
+  ],
   "author": "Martin Dao",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer": "^24.41.0"
+  }
 }

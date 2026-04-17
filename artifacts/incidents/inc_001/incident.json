@@ -1,0 +1,51 @@
+{
+  "id": "inc_001",
+  "status": "open",
+  "severity": "P2",
+  "title": "Database connection exhaustion affecting database, api",
+  "opened_at": "2026-04-17T10:27:54.443Z",
+  "promoted_from_event_bucket": "system_incident",
+  "primary_service": "database",
+  "affected_components": [
+    "database",
+    "api"
+  ],
+  "probable_origin": {
+    "service": "database",
+    "confidence": 0.8,
+    "reason": "earliest repeated failure in correlation window (3 events). Cloud-service analysis: RDS connection pool exhaustion detected. 3 connection failures from database indicate RDS instance under pressure."
+  },
+  "timeline_ref": "artifacts/incidents/inc_001/timeline.json",
+  "evidence_ref": "artifacts/incidents/inc_001/evidence-bundle.json",
+  "summary_ref": "artifacts/incidents/inc_001/summary.md",
+  "runbook_ref": "runbooks/db-exhaustion.md",
+  "correlated_events": [
+    "evt_db_err_0",
+    "evt_db_err_1",
+    "evt_db_err_2",
+    "evt_api_db_err"
+  ],
+  "aws_context": {
+    "account_id": "123456789012",
+    "region": "us-east-1",
+    "impacted_services": [
+      {
+        "service": "RDS",
+        "arn": "arn:aws:rds:us-east-1:123456789012:db:database",
+        "status": "degraded"
+      },
+      {
+        "service": "ALB",
+        "arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/api",
+        "status": "degraded"
+      }
+    ],
+    "event_type_code": "AWS_RDS_CONNECTION_EXHAUSTION",
+    "blast_radius": [
+      "arn:aws:rds:us-east-1:123456789012:db:database",
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/api"
+    ],
+    "dependency_notes": "Database connection exhaustion affecting database, api. RDS connection pool saturation propagates failures to dependent services. Check connection pool sizing and long-running queries.",
+    "routing_artifact_ref": "docs/incident-ops/cloud-service-topology.md"
+  }
+}

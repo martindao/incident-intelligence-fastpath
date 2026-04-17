@@ -2,5 +2,5 @@
   "api": "operational",
   "job-worker": "operational",
   "queue": "operational",
-  "database": "operational"
+  "database": "degraded"
 }

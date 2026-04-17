@@ -1,0 +1,91 @@
+{
+  "incident_id": "inc_001",
+  "captured_at": "2026-04-17T10:27:54.444Z",
+  "checksum": "sha256:bdb3cf1a09d3cc3b",
+  "scenario_id": "db-exhaustion",
+  "component_health": {
+    "api": "operational",
+    "job-worker": "operational",
+    "queue": "operational",
+    "database": "degraded"
+  },
+  "queue_depth": 0,
+  "recent_logs": [
+    {
+      "timestamp": "2026-04-17T10:17:02.359Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (85/100)"
+    },
+    {
+      "timestamp": "2026-04-17T10:17:03.359Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (86/100)"
+    },
+    {
+      "timestamp": "2026-04-17T10:17:04.359Z",
+      "service": "database",
+      "severity": "error",
+      "message": "Too many database connections (87/100)"
+    },
+    {
+      "timestamp": "2026-04-17T10:17:05.359Z",
+      "service": "api",
+      "severity": "error",
+      "message": "API write failed: connection timeout"
+    }
+  ],
+  "db_status": {
+    "active_connections": 85,
+    "max_connections": 100,
+    "recent_errors": 0
+  },
+  "triggering_events": [
+    "evt_db_err_0",
+    "evt_db_err_1",
+    "evt_db_err_2",
+    "evt_api_db_err"
+  ],
+  "failed_jobs_count": 0,
+  "processed_jobs_count": 0,
+  "aws_context": {
+    "account_id": "123456789012",
+    "region": "us-east-1",
+    "services": [
+      {
+        "arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/api-alb",
+        "service": "ALB",
+        "status": "operational",
+        "criticality": "high"
+      },
+      {
+        "arn": "arn:aws:lambda:us-east-1:123456789012:function:job-worker",
+        "service": "Lambda",
+        "status": "operational",
+        "criticality": "high"
+      },
+      {
+        "arn": "arn:aws:sqs:us-east-1:123456789012:job-queue",
+        "service": "SQS",
+        "status": "operational",
+        "criticality": "medium"
+      },
+      {
+        "arn": "arn:aws:rds:us-east-1:123456789012:db:postgres-primary",
+        "service": "RDS",
+        "status": "degraded",
+        "criticality": "critical"
+      }
+    ],
+    "event_type_code": "AWS_RDS_CONNECTION_EXHAUSTION",
+    "blast_radius": [
+      "arn:aws:rds:us-east-1:123456789012:db:postgres-primary"
+    ]
+  },
+  "dependency_notes": "Cloud service dependencies impacted: RDS. Incident may propagate through service topology. Refer to routing artifact for escalation paths.",
+  "blast_radius": [
+    "arn:aws:rds:us-east-1:123456789012:db:postgres-primary"
+  ],
+  "routing_artifact_ref": "docs/incident-ops/cloud-service-topology.md"
+}
