@@ -118,16 +118,47 @@ async function runIntegrationTests() {
       }
     });
 
-    test('summary.md contains all required sections', () => {
-      const summary = fs.readFileSync(summaryPath, 'utf8');
-      const requiredSections = ['What Happened', 'Evidence Captured', 'Recommended Next Actions', 'runbooks/poison-pill-job.md'];
-      for (const section of requiredSections) {
-        if (!summary.includes(section)) throw new Error(`Missing section: ${section}`);
-      }
-    });
-  }
+        test('summary.md contains all required sections', () => {
+            const summary = fs.readFileSync(summaryPath, 'utf8');
+            const requiredSections = ['What Happened', 'Evidence Captured', 'Recommended Next Actions', 'runbooks/poison-pill-job.md'];
+            for (const section of requiredSections) {
+                if (!summary.includes(section)) throw new Error(`Missing section: ${section}`);
+            }
+        });
 
-  // --- Test 2: Queue backlog scenario ---
+        test('poison-pill incident does NOT have aws_context (backward compatibility)', () => {
+            const incident = JSON.parse(fs.readFileSync(incidentPath, 'utf8'));
+            if (incident.aws_context) {
+                throw new Error('Poison-pill incident should NOT have aws_context for non-cloud events');
+            }
+        });
+
+        test('poison-pill incident probable_origin does NOT contain cloud-service analysis', () => {
+            const incident = JSON.parse(fs.readFileSync(incidentPath, 'utf8'));
+            if (incident.probable_origin.reason.includes('Cloud-service analysis')) {
+                throw new Error('Poison-pill probable_origin should NOT contain cloud-service analysis');
+            }
+        });
+
+        test('poison-pill summary does NOT contain AWS-flavored sections', () => {
+            const summary = fs.readFileSync(summaryPath, 'utf8');
+            if (summary.includes('AWS-flavored incident context')) {
+                throw new Error('Poison-pill summary should NOT contain AWS-flavored sections');
+            }
+        });
+
+        test('poison-pill evidence still generates valid artifacts without AWS context', () => {
+            const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+            if (!evidence.checksum || !evidence.checksum.startsWith('sha256:')) {
+                throw new Error('Evidence should still have valid checksum without AWS context');
+            }
+            if (!evidence.component_health) {
+                throw new Error('Evidence should still have component_health');
+            }
+        });
+    }
+
+    // --- Test 2: Queue backlog scenario ---
   console.log('\nScenario 2: Queue Backlog');
   resetSystem();
   store.setScenarioMode('queue-backlog');
@@ -244,6 +275,9 @@ async function runIntegrationTests() {
   if (dbIncidentDirs.length > 0) {
     const dbIncidentId = dbIncidentDirs[0];
     const dbIncidentPath = path.join(ARTIFACTS_DIR, dbIncidentId, 'incident.json');
+    const dbEvidencePath = path.join(ARTIFACTS_DIR, dbIncidentId, 'evidence-bundle.json');
+    const dbSummaryPath = path.join(ARTIFACTS_DIR, dbIncidentId, 'summary.md');
+
     test('DB incident identifies database as affected component', () => {
       const incident = JSON.parse(fs.readFileSync(dbIncidentPath, 'utf8'));
       if (!incident.affected_components.includes('database')) {
@@ -254,6 +288,98 @@ async function runIntegrationTests() {
       const incident = JSON.parse(fs.readFileSync(dbIncidentPath, 'utf8'));
       if (!['P1', 'P2'].includes(incident.severity)) {
         throw new Error(`Expected P1 or P2 severity, got ${incident.severity}`);
+      }
+    });
+
+    // --- AWS Context Propagation Assertions ---
+    test('DB incident has aws_context with valid structure', () => {
+      const incident = JSON.parse(fs.readFileSync(dbIncidentPath, 'utf8'));
+      if (!incident.aws_context) {
+        throw new Error('DB incident should have aws_context for cloud-pattern events');
+      }
+      if (!incident.aws_context.account_id) {
+        throw new Error('aws_context missing account_id');
+      }
+      if (!incident.aws_context.region) {
+        throw new Error('aws_context missing region');
+      }
+      if (!Array.isArray(incident.aws_context.impacted_services)) {
+        throw new Error('aws_context.impacted_services should be an array');
+      }
+      if (!Array.isArray(incident.aws_context.blast_radius)) {
+        throw new Error('aws_context.blast_radius should be an array');
+      }
+    });
+
+    test('DB incident probable_origin contains cloud-service analysis', () => {
+      const incident = JSON.parse(fs.readFileSync(dbIncidentPath, 'utf8'));
+      if (!incident.probable_origin.reason.includes('Cloud-service analysis')) {
+        throw new Error('probable_origin.reason should contain cloud-service analysis');
+      }
+      if (!incident.probable_origin.reason.includes('RDS')) {
+        throw new Error('probable_origin.reason should mention RDS for database incidents');
+      }
+    });
+
+    test('DB evidence bundle contains aws_context with required fields', () => {
+      const evidence = JSON.parse(fs.readFileSync(dbEvidencePath, 'utf8'));
+      if (!evidence.aws_context) {
+        throw new Error('Evidence bundle should have aws_context');
+      }
+      if (!evidence.aws_context.account_id) {
+        throw new Error('Evidence aws_context missing account_id');
+      }
+      if (!evidence.aws_context.region) {
+        throw new Error('Evidence aws_context missing region');
+      }
+      if (!Array.isArray(evidence.aws_context.services)) {
+        throw new Error('Evidence aws_context.services should be an array');
+      }
+    });
+
+    test('DB evidence bundle contains dependency_notes with meaningful text', () => {
+      const evidence = JSON.parse(fs.readFileSync(dbEvidencePath, 'utf8'));
+      if (!evidence.dependency_notes || evidence.dependency_notes.length === 0) {
+        throw new Error('Evidence bundle should have dependency_notes');
+      }
+      if (!evidence.dependency_notes.includes('Cloud') && !evidence.dependency_notes.includes('RDS')) {
+        throw new Error('dependency_notes should mention cloud/RDS context');
+      }
+    });
+
+    test('DB evidence bundle contains blast_radius array', () => {
+      const evidence = JSON.parse(fs.readFileSync(dbEvidencePath, 'utf8'));
+      if (!Array.isArray(evidence.blast_radius)) {
+        throw new Error('Evidence bundle should have blast_radius array');
+      }
+      // Blast radius should contain ARNs for degraded components
+      const hasRdsArn = evidence.blast_radius.some(arn => arn.includes('rds'));
+      if (!hasRdsArn) {
+        throw new Error('blast_radius should include RDS ARN for degraded database');
+      }
+    });
+
+    test('DB summary contains AWS-flavored incident context section', () => {
+      const summary = fs.readFileSync(dbSummaryPath, 'utf8');
+      if (!summary.includes('AWS-flavored incident context')) {
+        throw new Error('Summary should contain AWS-flavored incident context section');
+      }
+    });
+
+    test('DB summary contains Cloud dependency analysis section', () => {
+      const summary = fs.readFileSync(dbSummaryPath, 'utf8');
+      if (!summary.includes('Cloud dependency analysis')) {
+        throw new Error('Summary should contain Cloud dependency analysis section');
+      }
+    });
+
+    test('DB summary contains blast radius and remediation path', () => {
+      const summary = fs.readFileSync(dbSummaryPath, 'utf8');
+      if (!summary.includes('Blast radius')) {
+        throw new Error('Summary should contain Blast radius section');
+      }
+      if (!summary.includes('Remediation Path')) {
+        throw new Error('Summary should contain Remediation Path section');
       }
     });
   }

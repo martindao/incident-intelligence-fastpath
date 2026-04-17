@@ -144,8 +144,34 @@
     .sim-btn-text { flex: 1; text-align: left; }
     .sim-btn-badge { font-size: 0.625rem; padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); background: var(--bg-primary); border: 1px solid var(--border-subtle); color: var(--text-muted); }
     .reset-btn { margin-top: 0.5rem; padding: 0.5rem; background: transparent; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); color: var(--text-muted); font-size: 0.6875rem; cursor: pointer; transition: all 0.2s ease; }
-    .reset-btn:hover { border-color: var(--severity-p1); color: var(--severity-p1); }
-    @media (max-width: 1200px) { .app-layout { grid-template-columns: 300px 1fr 240px; } }
+.reset-btn:hover { border-color: var(--severity-p1); color: var(--severity-p1); }
+.aws-impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+.aws-service-card { background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; }
+.aws-service-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.aws-service-name { font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); }
+.aws-service-status { font-size: 0.625rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: var(--radius-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+.aws-service-status.degraded { background: var(--severity-p2-bg); color: var(--severity-p2); }
+.aws-service-status.warning { background: var(--severity-p3-bg); color: var(--severity-p3); }
+.aws-service-status.operational { background: var(--status-open-bg); color: var(--status-open); }
+.aws-service-arn { font-family: var(--font-mono); font-size: 0.625rem; color: var(--text-muted); margin-bottom: 0.375rem; word-break: break-all; }
+.aws-service-symptoms { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.aws-symptom-tag { font-size: 0.5625rem; padding: 0.0625rem 0.375rem; border-radius: var(--radius-sm); background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.blast-radius-section { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+.blast-radius-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+.blast-radius-scope { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; font-weight: 500; color: var(--text-primary); margin-bottom: 0.5rem; }
+.blast-radius-scope-icon { width: 14px; height: 14px; color: var(--severity-p2); }
+.blast-radius-impact { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.5rem; }
+.blast-radius-deps { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.blast-radius-dep { font-size: 0.625rem; padding: 0.125rem 0.5rem; border-radius: var(--radius-sm); background: var(--bg-tertiary); border: 1px solid var(--border-medium); color: var(--text-secondary); }
+.dependency-notes { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+.dependency-notes-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+.dependency-notes-list { display: flex; flex-direction: column; gap: 0.375rem; }
+.dependency-note { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; padding-left: 0.75rem; position: relative; }
+.dependency-note::before { content: '→'; position: absolute; left: 0; color: var(--accent-cyan); font-size: 0.625rem; }
+.origin-rationale { background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-top: 0.5rem; }
+.origin-rationale-text { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; }
+.origin-rationale-text strong { color: var(--text-primary); }
+@media (max-width: 1200px) { .app-layout { grid-template-columns: 300px 1fr 240px; } }
     @media (max-width: 900px) { .app-layout { grid-template-columns: 1fr; height: auto; } .incident-queue { border-right: none; border-bottom: 1px solid var(--border-subtle); max-height: 400px; } .context-panel { border-left: none; border-top: 1px solid var(--border-subtle); } }
   </style>
 </head>
@@ -293,12 +319,60 @@
       }
       var runbookPreview = '';
       if (runbook) { var sections = runbook.split('## ').slice(0, 4); runbookPreview = sections.join('## '); }
-      var html = '<div class="detail-header"><div class="detail-header-top"><div><div class="detail-id">' + inc.id + '</div><div class="detail-title">' + inc.title + '</div></div><div class="detail-badges"><span class="detail-badge ' + inc.severity.toLowerCase() + '">' + inc.severity + '</span><span class="detail-badge ' + inc.status.toLowerCase() + '">' + inc.status + '</span></div></div>';
-      html += '<div class="detail-meta-grid"><div class="meta-block"><div class="meta-block-label">Probable Origin</div><div class="meta-block-value">' + (inc.probable_origin ? inc.probable_origin.service : 'unknown') + ' (' + confidence + '%)</div></div>';
+var html = '<div class="detail-header"><div class="detail-header-top"><div><div class="detail-id">' + inc.id + '</div><div class="detail-title">' + inc.title + '</div></div><div class="detail-badges"><span class="detail-badge ' + inc.severity.toLowerCase() + '">' + inc.severity + '</span><span class="detail-badge ' + inc.status.toLowerCase() + '">' + inc.status + '</span></div></div>';
+  // Pre-check aws_context for meta grid enhancements
+  var awsCtxPreview = inc.aws_context;
+  html += '<div class="detail-meta-grid"><div class="meta-block"><div class="meta-block-label">Probable Origin</div><div class="meta-block-value">' + (inc.probable_origin ? inc.probable_origin.service : 'unknown') + ' (' + confidence + '%)</div>';
+  // Add blast-radius explanation to probable-origin area if aws_context exists
+  if (awsCtxPreview && awsCtxPreview.probable_origin && awsCtxPreview.probable_origin.rationale) {
+    html += '<div class="origin-rationale"><div class="origin-rationale-text"><strong>Cloud Rationale:</strong> ' + awsCtxPreview.probable_origin.rationale + '</div></div>';
+  }
+  html += '</div>';
       html += '<div class="meta-block"><div class="meta-block-label">Affected Components</div><div class="meta-block-value">' + (inc.affected_components ? inc.affected_components.join(', ') : 'none') + '</div></div>';
       html += '<div class="meta-block"><div class="meta-block-label">Correlated Events</div><div class="meta-block-value mono">' + eventCount + ' events</div></div>';
-      html += '<div class="meta-block"><div class="meta-block-label">Opened At</div><div class="meta-block-value mono">' + new Date(inc.opened_at).toLocaleString() + '</div></div></div></div>';
-      if (overviewText) {
+html += '<div class="meta-block"><div class="meta-block-label">Opened At</div><div class="meta-block-value mono">' + new Date(inc.opened_at).toLocaleString() + '</div></div></div></div>';
+  // AWS Impact Analysis Section - only render if aws_context exists
+  var awsCtx = inc.aws_context || (evidence && evidence.aws_context);
+  if (awsCtx) {
+    html += '<div class="detail-section" data-testid="aws-impact-panel"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg><span class="section-title">AWS Impact Analysis</span></div><div class="section-content">';
+    // Impacted Services Grid
+    if (awsCtx.impacted_services && awsCtx.impacted_services.length > 0) {
+      html += '<div class="aws-impact-grid">';
+      awsCtx.impacted_services.forEach(function(svc) {
+        var statusClass = svc.status === 'degraded' ? 'degraded' : (svc.status === 'warning' ? 'warning' : 'operational');
+        html += '<div class="aws-service-card"><div class="aws-service-header"><span class="aws-service-name">' + svc.service_name + '</span><span class="aws-service-status ' + statusClass + '">' + svc.status + '</span></div>';
+        if (svc.resource_identifier) {
+          html += '<div class="aws-service-arn">' + svc.resource_identifier + '</div>';
+        }
+        if (svc.symptoms && svc.symptoms.length > 0) {
+          html += '<div class="aws-service-symptoms">';
+          svc.symptoms.forEach(function(sym) { html += '<span class="aws-symptom-tag">' + sym + '</span>'; });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    // Blast Radius Section
+    if (awsCtx.blast_radius) {
+      var br = awsCtx.blast_radius;
+      html += '<div class="blast-radius-section"><div class="blast-radius-title">Blast Radius</div>';
+      if (br.scope) {
+        html += '<div class="blast-radius-scope"><svg class="blast-radius-scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>' + br.scope.charAt(0).toUpperCase() + br.scope.slice(1) + ' Impact</div>';
+      }
+      if (br.estimated_customer_impact) {
+        html += '<div class="blast-radius-impact">' + br.estimated_customer_impact + '</div>';
+      }
+      if (br.downstream_dependencies && br.downstream_dependencies.length > 0) {
+        html += '<div class="blast-radius-deps">';
+        br.downstream_dependencies.forEach(function(dep) { html += '<span class="blast-radius-dep">' + dep + '</span>'; });
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+if (overviewText) {
         html += '<div class="detail-section"><div class="section-header"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span class="section-title">Overview</span></div><div class="section-content"><div class="overview-text">' + overviewText.replace(/\n/g, '<br>') + '</div>';
         if (nextActions.length > 0) { html += '<div class="next-actions"><div class="next-actions-title">Recommended Next Actions</div>'; nextActions.forEach(function(a, i) { html += '<div class="next-action-item"><span class="next-action-num">' + (i+1) + '</span><span>' + a + '</span></div>'; }); html += '</div>'; }
         html += '</div></div>';
@@ -320,12 +394,23 @@
         html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.db_status ? evidence.db_status.active_connections + '/' + evidence.db_status.max_connections : '—') + '</div><div class="evidence-metric-label">DB Connections</div></div>';
         html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.failed_jobs_count !== undefined ? evidence.failed_jobs_count : '—') + '</div><div class="evidence-metric-label">Failed Jobs</div></div>';
         html += '<div class="evidence-metric"><div class="evidence-metric-value">' + (evidence.processed_jobs_count !== undefined ? evidence.processed_jobs_count : '—') + '</div><div class="evidence-metric-label">Processed Jobs</div></div></div>';
-        if (evidence.recent_logs && evidence.recent_logs.length > 0) {
-          html += '<div class="evidence-logs"><div class="evidence-logs-title">Recent Logs</div>';
-          evidence.recent_logs.slice(-8).forEach(function(log) { html += '<div class="log-entry"><span class="log-severity ' + log.severity + '">[' + log.severity.toUpperCase() + ']</span>' + log.service + ': ' + log.message + '</div>'; });
-          html += '</div>';
-        }
-        if (evidence.checksum) html += '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle);font-size:0.625rem;color:var(--text-muted);font-family:var(--font-mono);">Evidence captured: ' + (evidence.captured_at ? new Date(evidence.captured_at).toLocaleString() : '—') + ' · Checksum: ' + evidence.checksum + '</div>';
+if (evidence.recent_logs && evidence.recent_logs.length > 0) {
+      html += '<div class="evidence-logs"><div class="evidence-logs-title">Recent Logs</div>';
+      evidence.recent_logs.slice(-8).forEach(function(log) { html += '<div class="log-entry"><span class="log-severity ' + log.severity + '">[' + log.severity.toUpperCase() + ']</span>' + log.service + ': ' + log.message + '</div>'; });
+      html += '</div>';
+    }
+    // Cloud Dependency Notes - only render if aws_context exists in evidence
+    var awsEvidenceCtx = evidence.aws_context;
+    if (awsEvidenceCtx && (awsEvidenceCtx.dependency_notes || (awsEvidenceCtx.blast_radius && awsEvidenceCtx.blast_radius.downstream_dependencies))) {
+      html += '<div class="dependency-notes"><div class="dependency-notes-title">Cloud Dependency Rationale</div><div class="dependency-notes-list">';
+      if (Array.isArray(awsEvidenceCtx.dependency_notes)) {
+        awsEvidenceCtx.dependency_notes.forEach(function(note) { html += '<div class="dependency-note">' + note + '</div>'; });
+      } else if (typeof awsEvidenceCtx.dependency_notes === 'string') {
+        html += '<div class="dependency-note">' + awsEvidenceCtx.dependency_notes + '</div>';
+      }
+      html += '</div></div>';
+    }
+    if (evidence.checksum) html += '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle);font-size:0.625rem;color:var(--text-muted);font-family:var(--font-mono);">Evidence captured: ' + (evidence.captured_at ? new Date(evidence.captured_at).toLocaleString() : '—') + ' · Checksum: ' + evidence.checksum + '</div>';
         html += '</div></div>';
       }
       if (runbookPreview) {

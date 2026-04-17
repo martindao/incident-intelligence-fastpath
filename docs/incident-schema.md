@@ -136,3 +136,59 @@ Immutable snapshot captured at incident promotion time.
   "triggering_events": ["evt_001", "evt_002", "evt_003"]
 }
 ```
+
+---
+
+## AWS Context Schema
+Cloud-infrastructure context attached to incidents involving AWS services. Only present when cloud-pattern events are detected.
+
+```json
+{
+  "account_id": "123456789012",
+  "region": "us-east-1",
+  "impacted_services": [
+    {
+      "service": "RDS",
+      "arn": "arn:aws:rds:us-east-1:123456789012:db:database",
+      "status": "degraded"
+    },
+    {
+      "service": "SQS",
+      "arn": "arn:aws:sqs:us-east-1:123456789012:queue",
+      "status": "degraded"
+    }
+  ],
+  "event_type_code": "AWS_RDS_CONNECTION_EXHAUSTION",
+  "blast_radius": [
+    "arn:aws:rds:us-east-1:123456789012:db:database",
+    "arn:aws:sqs:us-east-1:123456789012:queue"
+  ],
+  "dependency_notes": "Database connection exhaustion affecting database, queue. RDS connection pool saturation propagates failures to dependent services. Check connection pool sizing and long-running queries.",
+  "routing_artifact_ref": "docs/incident-ops/cloud-service-topology.md"
+}
+```
+
+### Fields
+| Field | Type | Required | Description |
+|---|---|---|---|
+| account_id | string | yes | AWS account identifier (12-digit) |
+| region | string | yes | AWS region where incident originated |
+| impacted_services | array | yes | List of AWS services affected with ARN and status |
+| event_type_code | string | yes | Standardized AWS event classification code |
+| blast_radius | array | yes | ARNs of all resources potentially affected |
+| dependency_notes | string | yes | Human-readable explanation of service dependencies |
+| routing_artifact_ref | string | yes | Path to cloud service topology documentation |
+
+### Event Type Codes
+| Code | Description |
+|---|---|
+| AWS_RDS_CONNECTION_EXHAUSTION | Database connection pool saturation |
+| AWS_SQS_QUEUE_BACKLOG | Queue message accumulation threshold exceeded |
+| AWS_LAMBDA_EXECUTION_FAILURE | Lambda function execution errors |
+| AWS_LAMBDA_EXECUTION_DELAY | Lambda execution latency elevated |
+| AWS_ALB_LATENCY_ELEVATED | Application Load Balancer latency high |
+| AWS_ALB_ERROR_RATE_ELEVATED | ALB error rate above threshold |
+| AWS_INFRASTRUCTURE_ALERT | Generic infrastructure alert (fallback) |
+
+### Backward Compatibility Note
+When AWS context is absent, incidents render with existing fields only. The `aws_context` field is optional and only populated for cloud-pattern incidents. Consumers must gracefully handle incidents without this field.

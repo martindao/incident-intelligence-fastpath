@@ -40,6 +40,48 @@ function generateSummary(incident, evidence, timeline) {
   }
   lines.push('');
 
+  // AWS-flavored incident context (conditional)
+  if (incident.aws_context) {
+    lines.push('## AWS-flavored incident context');
+    lines.push('');
+    lines.push(`**Account**: ${incident.aws_context.account_id}`);
+    lines.push(`**Region**: ${incident.aws_context.region}`);
+    lines.push(`**Event Type Code**: ${incident.aws_context.event_type_code}`);
+    lines.push('');
+    lines.push('**Impacted AWS Services**:');
+    for (const svc of incident.aws_context.impacted_services) {
+      lines.push(`- ${svc.service}: \`${svc.arn}\` (${svc.status})`);
+    }
+    lines.push('');
+  }
+
+  // Cloud dependency analysis during escalation (conditional)
+  if (incident.aws_context) {
+    lines.push('## Cloud dependency analysis during escalation');
+    lines.push('');
+    lines.push(incident.aws_context.dependency_notes);
+    lines.push('');
+    lines.push(`**Routing Artifact**: ${incident.aws_context.routing_artifact_ref}`);
+    lines.push('');
+  }
+
+  // Blast radius and likely remediation path (conditional)
+  if (incident.aws_context && incident.aws_context.blast_radius) {
+    lines.push('## Blast radius and likely remediation path');
+    lines.push('');
+    lines.push('**Affected ARNs**:');
+    for (const arn of incident.aws_context.blast_radius) {
+      lines.push(`- ${arn}`);
+    }
+    lines.push('');
+    lines.push('**Likely Remediation Path**:');
+    lines.push('1. Isolate the primary degraded service to prevent cascade');
+    lines.push('2. Scale consumers if queue backlog detected');
+    lines.push('3. Review connection pool sizing if RDS exhaustion');
+    lines.push('4. Consult routing artifact for service-specific escalation');
+    lines.push('');
+  }
+
   lines.push('## Recommended Next Actions');
   lines.push('');
   lines.push(`1. Review the linked runbook: ${incident.runbook_ref}`);

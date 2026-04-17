@@ -146,3 +146,98 @@ This repo proves that application support is not just ticket handling — it is 
 - Reduce the manual toil that burns out support teams
 
 The patterns demonstrated here — event-to-incident separation, dwell-time correlation, evidence snapshotting, and support-focused artifact generation — are directly applicable to any startup dealing with production incidents.
+
+## AWS-flavored incident context
+
+When the intelligence core detects cloud-pattern events, incidents include AWS service context that accelerates diagnosis. Instead of generic "service degraded" alerts, support engineers see structured context like:
+
+```
+probable_origin:
+  cloud_service: "AWS Lambda"
+  rationale: "Elevated error rates detected in Lambda function 'order-processor-prod' with p99 latency exceeding 15s threshold. CloudWatch metrics show concurrent execution spikes correlating with incident timeline."
+  region: "us-east-1"
+```
+
+Each incident record includes:
+- **Cloud service identification**: Which AWS service is the probable origin (Lambda, RDS, SQS, ECS, ALB)
+- **Resource identifiers**: ARN-formatted resource references for immediate lookup
+- **Symptom mapping**: Cloud-specific symptoms tied to the service (e.g., "connection pool exhaustion" for RDS, "throttling" for Lambda)
+- **Runbook linkage**: Direct links to service-specific troubleshooting guides
+
+This context is captured in `incident.json` artifacts and displayed in the support console. See `docs/incident-ops/aws-incident-context.json` for the full schema.
+
+## How telemetry becomes a cloud-service incident hypothesis
+
+The intelligence core correlates raw telemetry into a cloud-service incident hypothesis using four rules:
+
+### Rule 1: Temporal Correlation
+
+Alerts firing within a 30-second window are grouped together. This catches cascading failures where one service failure triggers alerts in dependent services.
+
+```
+T+0s:  RDS connection_count_high (warning)
+T+15s: ECS task_health_degraded (warning)
+T+25s: ALB target_health_failed (critical)
+→ Correlated incident: RDS connection exhaustion cascading to ECS/ALB
+```
+
+### Rule 2: Dependency Path Matching
+
+Alerts are correlated if they appear on the same dependency path. The service topology defines valid correlation paths:
+
+- RDS → ECS/EKS → ALB → Route53
+- SQS → Lambda
+- ALB → ECS/EKS
+
+Invalid correlations (e.g., Route53 → RDS with no direct dependency) are rejected.
+
+### Rule 3: Severity Promotion
+
+When multiple alerts correlate, the highest severity becomes the incident severity:
+- Any critical alert → Incident is critical
+- Multiple warnings → Incident promoted to warning
+- Single warning → Incident remains informational
+
+### Rule 4: Probable Origin Inference
+
+The probable origin is the **most upstream service** showing symptoms. Upstream is defined by the dependency graph:
+
+| Alerts | Probable Origin | Reasoning |
+|--------|-----------------|-----------|
+| RDS + ECS + ALB | RDS | RDS is upstream of ECS and ALB |
+| SQS + Lambda | SQS | SQS is upstream of Lambda consumers |
+| ALB + Route53 | ALB | ALB is upstream of Route53 health checks |
+
+See `docs/incident-ops/probable-origin-analysis.md` for the full correlation framework.
+
+## Cloud dependency analysis during support escalation
+
+When an incident is promoted, the intelligence core captures blast radius and dependency notes that help support engineers understand impact scope.
+
+### Blast Radius Classification
+
+| Level | Scope | Example |
+|-------|-------|---------|
+| **Contained** | Single service | Lambda function timeout |
+| **Adjacent** | Direct dependencies | RDS connection exhaustion affecting ECS tasks |
+| **Cascading** | Multiple downstream services | ALB failure causing Route53 health check failures |
+| **System-wide** | All services | Network partition affecting all AWS regions |
+
+### Dependency Notes
+
+Each incident includes dependency notes that trace the failure path:
+
+```
+dependency_notes:
+  - "Lambda function 'order-processor-prod' depends on RDS 'orders-db-prod' for order persistence"
+  - "SQS queue 'order-queue-prod' buffers incoming orders before Lambda processing"
+  - "RDS connection pool (max 200) exhausted due to Lambda concurrency spike"
+  - "Cascading latency observed: SQS -> Lambda -> RDS"
+```
+
+These notes are generated from the service topology map and help engineers quickly identify:
+- Which services are directly affected
+- Which downstream services may experience delayed impact
+- Where to focus mitigation efforts
+
+The support console displays blast radius scope and dependency notes in the incident detail view. See `docs/incident-ops/cloud-service-topology.md` for the full service dependency graph.
